@@ -1,0 +1,161 @@
+<!-- Load Stripe.js on your website. -->
+<script src="https://js.stripe.com/v3"></script>
+
+<!-- Create a button that your customers click to complete their purchase. Customize the styling to suit your branding. -->
+<button
+  style="background-color:#6772E5;color:#FFF;padding:8px 12px;border:0;border-radius:4px;font-size:1em"
+  id="checkout-button-sku_ErZCVc40o9O07E"
+  role="link"
+>
+  Checkout
+</button>
+
+<div id="error-message"></div>
+
+<script>
+  var stripe = Stripe('pk_test_mrnLRlEutGGdFpnMZ454Thxr', {
+    betas: ['checkout_beta_4']
+  });
+
+  var checkoutButton = document.getElementById('checkout-button-sku_ErZCVc40o9O07E');
+  checkoutButton.addEventListener('click', function () {
+    // When the customer clicks on the button, redirect
+    // them to Checkout.
+    stripe.redirectToCheckout({
+      items: [{sku: 'sku_ErZCVc40o9O07E', quantity: 1}],
+
+      // Note that it is not guaranteed your customers will be redirected to this
+      // URL *100%* of the time, it's possible that they could e.g. close the
+      // tab between form submission and the redirect.
+      successUrl: 'https://jacksonb2913.github.io/newSite/newSite/complete.html',
+      cancelUrl: 'https://jacksonb2913.github.io/newSite/newSite/canceled.html',
+    })
+    .then(function (result) {
+      if (result.error) {
+        // If `redirectToCheckout` fails due to a browser or network
+        // error, display the localized error message to your customer.
+        var displayError = document.getElementById('error-message');
+        displayError.textContent = result.error.message;
+      }
+    });
+  });
+</script>
+
+// Publishable Stripe key
+var stripe = Stripe('pk_test_mrnLRlEutGGdFpnMZ454Thxr', {
+    betas: ['checkout_beta_4']
+});
+
+// SKU for each currency
+var skus = {
+    EUR: 'sku_EECTkbT4J0SGFN',
+    USD: 'sku_ErZCVc40o9O07E',
+    GBP: 'sku_EBBTCgLzZallj0'
+};
+
+// Preset suggested donation amounts for each currency
+var choices = {
+    EUR: [3,6,12,25],
+    USD: [3,6,12,25],
+    GBP: [3,5,10,20]
+};
+
+// Get the selected curreny (including currency symbol)
+function getCurrency() {
+    var selector = document.getElementById('currency');
+    var currency = selector.options[selector.options.selectedIndex].innerHTML;
+    return currency;
+}
+
+// Update donation amounts in buttons
+function updateDonationButtons() {
+    var currency = getCurrency();
+    var currency_code = currency.substr(0,3);
+    document.querySelector('#amount-0+label').innerHTML = currency + choices[currency_code][0];
+    document.querySelector('#amount-1+label').innerHTML = currency + choices[currency_code][1];
+    document.querySelector('#amount-2+label').innerHTML = currency + choices[currency_code][2];
+    document.querySelector('#amount-3+label').innerHTML = currency + choices[currency_code][3];
+    document.querySelector('#amount-4+label').innerHTML = currency;
+}
+
+// Change buttons when currency is changed
+var currencySelector = document.getElementById('currency');
+currencySelector.addEventListener('change', updateDonationButtons);
+
+// Initialise values in buttons
+updateDonationButtons();
+
+// Select final radio button if input box clicked or typed in
+document.getElementById('number').addEventListener('click', function(event) {
+    document.getElementById('amount-4').checked = true;
+});
+document.getElementById('number').addEventListener('input', function(event) {
+    document.getElementById('amount-4').checked = true;
+});
+
+// Put focus in input box if corresponding radio button is selected
+document.getElementById('amount-4').addEventListener('click', function(event) {
+    document.getElementById('number').focus();
+});
+
+// Get the numerical value of the donation amount
+function getAmount(currency) {
+    var radio = document.querySelector("input[type='radio'][name='amount']:checked");
+    if (radio === null) {
+        // nothing selected
+        return 0;
+    }
+    if (radio.id === 'amount-4') {
+        // "other amount" selected
+        amount = document.getElementById('number').value;
+        amount = Math.round(parseInt(amount));
+        if (isNaN(amount)) {
+            amount = 0;
+        }
+    } else {
+        // preset button selected
+        amount = choices[currency][radio.value];
+    }
+    return amount;
+}
+
+// Stripe submission
+document.getElementById('checkout-stripe').addEventListener('click', function() {
+
+    var displayError = document.getElementById('error-message');
+
+    var currency = getCurrency().substr(0,3);
+    var sku = skus[currency];
+
+    var amount = getAmount(currency);
+    if (amount === 0) {
+        displayError.textContent = "Please choose a valid amount.";
+        return;
+    }
+
+    stripe.redirectToCheckout({
+        items: [{
+            sku: sku,
+            quantity: amount
+        }],
+        successUrl: 'https://jacksonb2913.github.io/newSite/newSite/complete.html',
+        cancelUrl: 'https://jacksonb2913.github.io/newSite/newSite/canceled.html',
+    })
+    .then(function(result) {
+        if (result.error) {
+            // If `redirectToCheckout` fails due to a browser or network
+            // error, display the localized error message to your customer.
+            displayError.textContent = result.error.message;
+        }
+    });
+});
+
+// PayPal submission
+document.getElementById('checkout-paypal').addEventListener('click', function() {
+    var currency = getCurrency().substr(0,3);
+    var amount = getAmount(currency);
+    if (amount > 0) {
+        // If an amount has been chosen then update the URL to include it
+        this.setAttribute('href', this.getAttribute('href') + amount + currency);
+    }
+});
